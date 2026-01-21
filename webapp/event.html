@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>事件详情</title>
+
+    <!-- Vant4 样式 -->
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@4/lib/index.css"/>
+
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <van-nav-bar
+            title="事件详情"
+            left-arrow
+            :fixed="true"
+            :placeholder="true"
+            @click-left="goBack"
+        >
+            <template #right>
+                <van-icon name="share-o" size="18" @click="shareEvent"></van-icon>
+            </template>
+        </van-nav-bar>
+
+        <!-- 主内容区域 -->
+        <div class="event-detail-content" v-if="!loading && eventData">
+            <!-- 事件标题卡片 -->
+            <div class="event-title-card">
+                <div class="title-header">
+                    <van-tag
+                        :type="getSignalTagType(eventData.decision?.signal)"
+                        size="large"
+                    >
+                        {{ getSignalText(eventData.decision?.signal) }}
+                    </van-tag>
+                    <van-tag
+                        :type="getImportanceTagType(eventData.decision?.importance)"
+                        size="large"
+                        plain
+                    >
+                        {{ getImportanceText(eventData.decision?.importance) }}
+                    </van-tag>
+                </div>
+                <h1 class="event-main-title">{{ eventData.representative_title || '未知事件' }}</h1>
+                <p class="event-date">{{ formatDate(currentDate) }}</p>
+            </div>
+
+            <!-- 事件摘要 -->
+            <van-cell-group inset title="事件摘要" v-if="eventData.summary">
+                <div class="summary-content">
+                    {{ eventData.summary }}
+                </div>
+            </van-cell-group>
+
+            <!-- 决策建议 -->
+            <van-cell-group inset title="决策建议" v-if="eventData.decision">
+                <van-cell title="建议动作">
+                    <template #value>
+                        <van-tag :type="getActionTagType(eventData.decision.action)" size="medium">
+                            {{ getActionText(eventData.decision.action) }}
+                        </van-tag>
+                    </template>
+                </van-cell>
+                <van-cell title="决策理由" v-if="eventData.decision.reasoning">
+                    <template #label>
+                        <div class="reasoning-text">{{ eventData.decision.reasoning }}</div>
+                    </template>
+                </van-cell>
+            </van-cell-group>
+
+            <!-- 涉及公司 -->
+            <van-cell-group inset title="涉及公司" v-if="eventData.companies && eventData.companies.length > 0">
+                <div class="company-list">
+                    <van-tag
+                        v-for="company in eventData.companies"
+                        :key="company"
+                        size="medium"
+                        plain
+                        type="primary"
+                        class="company-tag"
+                    >
+                        {{ company }}
+                    </van-tag>
+                </div>
+            </van-cell-group>
+
+            <!-- 信息来源 -->
+            <van-cell-group inset title="信息来源">
+                <van-cell
+                    v-for="source in (eventData.sources || [])"
+                    :key="source"
+                    :title="source"
+                    icon="link-o"
+                />
+            </van-cell-group>
+
+            <!-- 相关新闻 -->
+            <van-cell-group inset title="相关新闻">
+                <div class="news-list">
+                    <div
+                        v-for="(newsItem, index) in relatedNews"
+                        :key="index"
+                        class="news-item"
+                        @click="openNews(newsItem.url)"
+                    >
+                        <div class="news-content">
+                            <h4 class="news-title">{{ newsItem.title }}</h4>
+                            <p class="news-summary" v-if="newsItem.ai_summary">
+                                {{ truncateText(newsItem.ai_summary, 80) }}
+                            </p>
+                            <div class="news-meta">
+                                <span class="news-source">{{ newsItem.source }}</span>
+                                <span class="news-time" v-if="newsItem.published_at">
+                                    {{ formatTime(newsItem.published_at) }}
+                                </span>
+                            </div>
+                        </div>
+                        <van-icon name="arrow" class="news-arrow"></van-icon>
+                    </div>
+                </div>
+            </van-cell-group>
+
+            <!-- 投资信息详情（如果有） -->
+            <van-cell-group inset title="投资信息" v-if="hasInvestmentInfo">
+                <van-collapse v-model="activeCollapse">
+                    <van-collapse-item title="核心观点" name="core" v-if="investmentInfo.core_thesis">
+                        <div class="info-content">{{ investmentInfo.core_thesis }}</div>
+                    </van-collapse-item>
+                    <van-collapse-item title="市场影响" name="market" v-if="investmentInfo.market_impact">
+                        <div class="info-content">{{ investmentInfo.market_impact }}</div>
+                    </van-collapse-item>
+                    <van-collapse-item title="风险因素" name="risk" v-if="investmentInfo.risk_factors && investmentInfo.risk_factors.length > 0">
+                        <ul class="risk-list">
+                            <li v-for="(risk, idx) in investmentInfo.risk_factors" :key="idx">{{ risk }}</li>
+                        </ul>
+                    </van-collapse-item>
+                    <van-collapse-item title="时间窗口" name="timeframe" v-if="investmentInfo.time_horizon">
+                        <div class="info-content">{{ investmentInfo.time_horizon }}</div>
+                    </van-collapse-item>
+                </van-collapse>
+            </van-cell-group>
+        </div>
+
+        <!-- 加载状态 -->
+        <div class="loading-container" v-if="loading">
+            <van-loading type="spinner" size="24px">加载中...</van-loading>
+        </div>
+
+        <!-- 错误状态 -->
+        <van-empty
+            v-if="!loading && !eventData"
+            description="加载失败"
+            image="error"
+        >
+            <van-button type="primary" size="small" @click="loadData">重新加载</van-button>
+        </van-empty>
+
+        <!-- 底部安全区域 -->
+        <div class="safe-area-bottom"></div>
+
+        <!-- 分享弹出层 -->
+        <van-share-sheet
+            v-model:show="showShare"
+            title="分享事件"
+            :options="shareOptions"
+            @select="onShareSelect"
+        />
+    </div>
+
+    <!-- Vue3 -->
+    <script src="https://fastly.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+
+    <!-- Vant4 -->
+    <script src="https://fastly.jsdelivr.net/npm/vant@4/lib/vant.min.js"></script>
+
+    <!-- 事件详情页逻辑 -->
+    <script src="js/event.js"></script>
+</body>
+</html>

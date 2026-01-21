@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AI投资新闻详情</title>
+
+    <!-- Vant4 样式 -->
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@4/lib/index.css"/>
+
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <van-nav-bar
+            :title="pageTitle"
+            left-arrow
+            :fixed="true"
+            :placeholder="true"
+            @click-left="goBack"
+        ></van-nav-bar>
+
+        <!-- 主内容区域 -->
+        <div class="detail-content" v-if="!loading && articleData">
+            <!-- 概览卡片 -->
+            <div class="overview-card">
+                <div class="overview-header">
+                    <span class="overview-title">今日概览</span>
+                    <span class="overview-date">{{ formatDate(articleData.date) }}</span>
+                </div>
+                <div class="overview-stats">
+                    <div class="stat-item">
+                        <span class="stat-value">{{ articleData.events ? articleData.events.length : 0 }}</span>
+                        <span class="stat-label">事件</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ articleData.news ? articleData.news.length : 0 }}</span>
+                        <span class="stat-label">新闻</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ positiveCount }}</span>
+                        <span class="stat-label signal-positive">利好</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ riskCount }}</span>
+                        <span class="stat-label signal-risk">风险</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 信号筛选 -->
+            <div class="filter-section">
+                <van-tabs v-model:active="activeTab" @change="onTabChange">
+                    <van-tab title="全部"></van-tab>
+                    <van-tab title="利好"></van-tab>
+                    <van-tab title="风险"></van-tab>
+                    <van-tab title="中性"></van-tab>
+                </van-tabs>
+            </div>
+
+            <!-- 事件列表 -->
+            <div class="event-list">
+                <div
+                    v-for="(event, index) in filteredEvents"
+                    :key="index"
+                    class="event-card"
+                    @click="goToEvent(event)"
+                >
+                    <div class="event-header">
+                        <van-tag
+                            :type="getSignalTagType(event.decision && event.decision.signal)"
+                            size="medium"
+                        >
+                            {{ getSignalText(event.decision && event.decision.signal) }}
+                        </van-tag>
+                        <van-tag
+                            :type="getImportanceTagType(event.decision && event.decision.importance)"
+                            size="medium"
+                            plain
+                        >
+                            {{ getImportanceText(event.decision && event.decision.importance) }}
+                        </van-tag>
+                    </div>
+
+                    <h3 class="event-title">{{ event.representative_title || '未知事件' }}</h3>
+
+                    <p class="event-summary" v-if="event.summary">
+                        {{ truncateText(event.summary, 100) }}
+                    </p>
+
+                    <div class="event-meta">
+                        <span class="meta-item">
+                        <van-icon name="newspaper-o"></van-icon>
+                            {{ event.news_count || 0 }} 条新闻
+                        </span>
+                        <span class="meta-item">
+                        <van-icon name="label-o"></van-icon>
+                            {{ (event.sources || []).slice(0, 2).join(', ') }}
+                            <template v-if="(event.sources || []).length > 2">
+                                等{{ event.sources.length }}个来源
+                            </template>
+                        </span>
+                    </div>
+
+                    <!-- 涉及公司 -->
+                    <div class="company-tags" v-if="event.companies && event.companies.length > 0">
+                        <van-tag
+                            v-for="company in event.companies.slice(0, 5)"
+                            :key="company"
+                            size="small"
+                            plain
+                            type="primary"
+                        >
+                            {{ company }}
+                        </van-tag>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <van-empty
+                v-if="filteredEvents.length === 0"
+                description="暂无相关事件"
+                image="search"
+            />
+        </div>
+
+        <!-- 加载状态 -->
+        <div class="loading-container" v-if="loading">
+            <van-loading type="spinner" size="24px">加载中...</van-loading>
+        </div>
+
+        <!-- 错误状态 -->
+        <van-empty
+            v-if="!loading && !articleData"
+            description="加载失败"
+            image="error"
+        >
+            <van-button type="primary" size="small" @click="loadData">重新加载</van-button>
+        </van-empty>
+
+        <!-- 底部安全区域 -->
+        <div class="safe-area-bottom"></div>
+    </div>
+
+    <!-- Vue3 -->
+    <script src="https://fastly.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+
+    <!-- Vant4 -->
+    <script src="https://fastly.jsdelivr.net/npm/vant@4/lib/vant.min.js"></script>
+
+    <!-- 详情页逻辑 -->
+    <script src="js/detail.js"></script>
+</body>
+</html>

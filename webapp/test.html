@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面</title>
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@4/lib/index.css"/>
+</head>
+<body>
+    <div id="app">
+        <van-nav-bar title="测试页面"></van-nav-bar>
+        
+        <div style="padding: 20px;">
+            <p>Loading: {{ loading }}</p>
+            <p>Data: {{ data }}</p>
+            
+            <van-button type="primary" @click="loadData">加载数据</van-button>
+            
+            <div v-if="!loading && items.length > 0" style="margin-top: 20px;">
+                <h3>列表内容：</h3>
+                <div v-for="(item, index) in items" :key="index" style="padding: 10px; border: 1px solid #ccc; margin: 5px 0;">
+                    {{ item.title }}
+                </div>
+            </div>
+            
+            <div v-if="loading" style="margin-top: 20px;">
+                <van-loading>加载中...</van-loading>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://fastly.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/vant@4/lib/vant.min.js"></script>
+    
+    <script>
+        const { createApp, ref } = Vue;
+        
+        const app = createApp({
+            setup() {
+                const loading = ref(false);
+                const data = ref(null);
+                const items = ref([]);
+                
+                const loadData = () => {
+                    console.log('loadData called');
+                    loading.value = true;
+                    
+                    setTimeout(() => {
+                        data.value = { message: 'Hello' };
+                        items.value = [
+                            { title: '测试项目 1' },
+                            { title: '测试项目 2' },
+                            { title: '测试项目 3' }
+                        ];
+                        loading.value = false;
+                        console.log('Data loaded:', items.value);
+                    }, 1000);
+                };
+                
+                return {
+                    loading,
+                    data,
+                    items,
+                    loadData
+                };
+            }
+        });
+        
+        app.use(vant);
+        app.mount('#app');
+        console.log('Test app mounted');
+    </script>
+</body>
+</html>

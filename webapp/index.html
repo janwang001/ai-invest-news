@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AI投资新闻</title>
+
+    <!-- Vant4 样式 -->
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@4/lib/index.css"/>
+
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <van-nav-bar
+            title="AI投资新闻"
+            :fixed="true"
+            :placeholder="true"
+        >
+            <template #right>
+                <van-icon name="search" size="18" @click="showSearch = true"></van-icon>
+            </template>
+        </van-nav-bar>
+
+        <!-- 搜索弹出层 -->
+        <van-popup v-model:show="showSearch" position="top" :style="{ height: '30%' }">
+            <div class="search-container">
+                <van-search
+                    v-model="searchKeyword"
+                    placeholder="搜索新闻标题或公司"
+                    @search="onSearch"
+                    @clear="onClearSearch"
+                />
+            </div>
+        </van-popup>
+
+        <!-- 下拉刷新 -->
+        <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+            <!-- 日期列表 -->
+            <div class="date-list" v-if="!loading && dateList.length > 0">
+                <div
+                    v-for="dateItem in filteredDateList"
+                    :key="dateItem.date"
+                    class="date-card"
+                    @click="goToDetail(dateItem.date)"
+                >
+                    <div class="date-header">
+                        <div class="date-info">
+                            <span class="date-text">{{ formatDate(dateItem.date) }}</span>
+                            <span class="weekday">{{ getWeekday(dateItem.date) }}</span>
+                        </div>
+                        <van-tag type="primary" size="medium">{{ dateItem.eventCount }} 个事件</van-tag>
+                    </div>
+
+                    <div class="event-preview">
+                        <div
+                            v-for="(event, index) in dateItem.topEvents.slice(0, 3)"
+                            :key="index"
+                            class="event-item"
+                        >
+                            <van-icon :name="getSignalIcon(event.signal)" :class="'signal-' + event.signal"></van-icon>
+                            <span class="event-title">{{ truncateText(event.title, 30) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <span class="news-count">{{ dateItem.newsCount }} 条新闻</span>
+                        <van-icon name="arrow" class="arrow-icon"></van-icon>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <van-empty
+                v-if="!loading && dateList.length === 0"
+                description="暂无数据"
+                image="search"
+            />
+
+            <!-- 加载状态 -->
+            <div class="loading-container" v-if="loading">
+                <van-loading type="spinner" size="24px">加载中...</van-loading>
+            </div>
+        </van-pull-refresh>
+
+        <!-- 底部安全区域 -->
+        <div class="safe-area-bottom"></div>
+    </div>
+
+    <!-- Vue3 -->
+    <script src="https://fastly.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+
+    <!-- Vant4 -->
+    <script src="https://fastly.jsdelivr.net/npm/vant@4/lib/vant.min.js"></script>
+
+    <!-- 主逻辑 -->
+    <script src="js/app.js"></script>
+</body>
+</html>
