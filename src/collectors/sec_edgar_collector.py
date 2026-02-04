@@ -403,7 +403,7 @@ class SECEdgarCollector:
                     return "P0"
                 else:
                     return "P1"
-            except:
+            except (ValueError, TypeError):
                 return "P1"
 
         if filing_type in ["13D", "SC 13D"]:

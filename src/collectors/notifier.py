@@ -15,13 +15,16 @@
 - P2: 每日汇总（仅文件记录）
 """
 
+import ipaddress
 import logging
 import json
 import os
+import socket
 from datetime import datetime
 from typing import List, Dict, Optional, Callable
 from dataclasses import dataclass, asdict
 from abc import ABC, abstractmethod
+from urllib.parse import urlparse
 import requests
 
 logger = logging.getLogger(__name__)
@@ -155,14 +158,95 @@ class FileChannel(NotificationChannel):
 class WebhookChannel(NotificationChannel):
     """Webhook推送渠道（Slack, 企业微信, 钉钉等）"""
 
+    # 允许的 webhook 域名白名单
+    ALLOWED_WEBHOOK_DOMAINS = {
+        'hooks.slack.com',
+        'oapi.dingtalk.com',
+        'qyapi.weixin.qq.com',
+        'discord.com',
+        'discordapp.com',
+    }
+
     def __init__(self, webhook_url: str, platform: str = "generic"):
         """
         Args:
             webhook_url: Webhook URL
             platform: 平台类型 (slack/wecom/dingtalk/generic)
+
+        Raises:
+            ValueError: 如果 webhook URL 不安全
         """
+        is_safe, reason = self._validate_webhook_url(webhook_url)
+        if not is_safe:
+            raise ValueError(f"不安全的 webhook URL: {reason}")
+
         self.webhook_url = webhook_url
         self.platform = platform
+
+    def _validate_webhook_url(self, url: str) -> tuple:
+        """
+        验证 webhook URL 安全性（SSRF 防护）
+
+        Args:
+            url: webhook URL
+
+        Returns:
+            (is_safe, reason) 元组
+        """
+        try:
+            parsed = urlparse(url)
+
+            # 1. 只允许 https 协议（webhook 应该使用 https）
+            if parsed.scheme != 'https':
+                return False, f"Webhook 必须使用 HTTPS 协议，当前: {parsed.scheme}"
+
+            hostname = parsed.hostname
+            if not hostname:
+                return False, "缺少主机名"
+
+            hostname_lower = hostname.lower()
+
+            # 2. 检查是否在白名单中
+            if hostname_lower in self.ALLOWED_WEBHOOK_DOMAINS:
+                return True, "域名在白名单中"
+
+            # 3. 检查是否是白名单域名的子域名
+            for allowed_domain in self.ALLOWED_WEBHOOK_DOMAINS:
+                if hostname_lower.endswith('.' + allowed_domain):
+                    return True, "子域名在白名单中"
+
+            # 4. 对于不在白名单中的域名，进行安全检查
+            # 禁止私有/内部地址
+            blocked_suffixes = ('.local', '.internal', '.lan', '.localdomain')
+            if hostname_lower.endswith(blocked_suffixes):
+                return False, f"禁止的内部域名后缀: {hostname}"
+
+            blocked_hostnames = {'localhost', 'internal', 'metadata'}
+            if hostname_lower in blocked_hostnames:
+                return False, f"禁止的主机名: {hostname}"
+
+            # 5. 检查 IP 地址
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if ip.is_private or ip.is_loopback or ip.is_link_local:
+                    return False, f"禁止的私有/内部 IP: {ip}"
+            except ValueError:
+                # 是域名，检查 DNS 解析结果
+                try:
+                    resolved_ips = socket.gethostbyname_ex(hostname)[2]
+                    for ip_str in resolved_ips:
+                        ip = ipaddress.ip_address(ip_str)
+                        if ip.is_private or ip.is_loopback or ip.is_link_local:
+                            return False, f"域名解析到私有 IP: {ip_str}"
+                except socket.gaierror:
+                    pass  # DNS 解析失败，允许继续
+
+            # 非白名单域名，发出警告但允许使用
+            logger.warning(f"Webhook 域名 '{hostname}' 不在白名单中，请确保其安全性")
+            return True, "通过安全检查（非白名单域名）"
+
+        except Exception as e:
+            return False, f"URL 验证失败: {e}"
 
     def send(self, notification: Notification) -> bool:
         """发送单条通知"""

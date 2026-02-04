@@ -6,13 +6,16 @@
 设计目标：稳定、干净、控制长度、失败可跳过
 """
 import hashlib
+import ipaddress
 import json
+import socket
 import time
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -69,7 +72,21 @@ class ArticleFetcher:
     - 控制输出长度
     - 本地文件存储
     - 抓取统计信息
+    - SSRF 防护
     """
+
+    # 禁止访问的主机名（内网/元数据服务）
+    BLOCKED_HOSTNAMES = {
+        'localhost', 'internal', 'metadata', 'metadata.google.internal',
+        '169.254.169.254',  # AWS/GCP metadata
+        'kubernetes.default', 'kubernetes.default.svc',
+    }
+
+    # 禁止访问的主机名后缀
+    BLOCKED_HOSTNAME_SUFFIXES = (
+        '.local', '.internal', '.lan', '.localdomain',
+        '.kubernetes.default.svc.cluster.local',
+    )
 
     def __init__(
         self,
@@ -88,6 +105,64 @@ class ArticleFetcher:
         self.max_chars = max_chars
         self.headers = headers or DEFAULT_HEADERS
 
+    def _is_safe_url(self, url: str) -> tuple[bool, str]:
+        """
+        验证 URL 是否安全（SSRF 防护）
+
+        :param url: 要验证的 URL
+        :return: (is_safe, reason) 元组
+        """
+        try:
+            parsed = urlparse(url)
+
+            # 1. 只允许 http/https 协议
+            if parsed.scheme not in ('http', 'https'):
+                return False, f"不允许的协议: {parsed.scheme}"
+
+            # 2. 必须有主机名
+            hostname = parsed.hostname
+            if not hostname:
+                return False, "缺少主机名"
+
+            # 3. 检查被禁止的主机名
+            hostname_lower = hostname.lower()
+            if hostname_lower in self.BLOCKED_HOSTNAMES:
+                return False, f"被禁止的主机名: {hostname}"
+
+            # 4. 检查被禁止的主机名后缀
+            if hostname_lower.endswith(self.BLOCKED_HOSTNAME_SUFFIXES):
+                return False, f"被禁止的主机名后缀: {hostname}"
+
+            # 5. 检查 IP 地址
+            try:
+                # 尝试解析为 IP 地址
+                ip = ipaddress.ip_address(hostname)
+                # 禁止私有/保留/回环/链路本地地址
+                if ip.is_private:
+                    return False, f"私有 IP 地址: {ip}"
+                if ip.is_reserved:
+                    return False, f"保留 IP 地址: {ip}"
+                if ip.is_loopback:
+                    return False, f"回环地址: {ip}"
+                if ip.is_link_local:
+                    return False, f"链路本地地址: {ip}"
+            except ValueError:
+                # 不是 IP 地址，是域名，进行 DNS 解析检查
+                try:
+                    resolved_ips = socket.gethostbyname_ex(hostname)[2]
+                    for ip_str in resolved_ips:
+                        ip = ipaddress.ip_address(ip_str)
+                        if ip.is_private or ip.is_loopback or ip.is_link_local:
+                            return False, f"域名解析到私有/内部 IP: {ip_str}"
+                except socket.gaierror:
+                    # DNS 解析失败，允许继续（可能是网络问题）
+                    pass
+
+            return True, "URL 安全"
+
+        except Exception as e:
+            return False, f"URL 验证失败: {e}"
+
     def fetch(self, url: str, save_to_disk: bool = True) -> ArticleResult:
         """
         抓取单篇文章
@@ -98,6 +173,12 @@ class ArticleFetcher:
         """
         start_time = time.time()
         result = ArticleResult(url=url, success=False)
+
+        # SSRF 防护：验证 URL 安全性
+        is_safe, reason = self._is_safe_url(url)
+        if not is_safe:
+            result.stats["error"] = f"URL 安全检查失败: {reason}"
+            return result
 
         try:
             # 发起请求

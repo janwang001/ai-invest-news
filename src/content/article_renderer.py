@@ -551,7 +551,7 @@ class MarkdownRenderer:
                     score += 2
                 elif hours_diff <= 48:
                     score += 1
-            except:
+            except (ValueError, AttributeError):
                 pass
         
         return score

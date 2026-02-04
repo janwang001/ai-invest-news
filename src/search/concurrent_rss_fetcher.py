@@ -110,7 +110,8 @@ class ConcurrentRSSFetcher:
             self.logger.debug(f"开始抓取: {source_name}")
 
             # 使用线程池执行feedparser.parse（因为它是阻塞的）
-            loop = asyncio.get_event_loop()
+            # 在异步上下文中使用 get_running_loop() 获取当前事件循环
+            loop = asyncio.get_running_loop()
             feed = await asyncio.wait_for(
                 loop.run_in_executor(executor, feedparser.parse, source_url),
                 timeout=self.timeout
@@ -219,10 +220,8 @@ class ConcurrentRSSFetcher:
             "error_sources": []       # 错误源
         }
 
-        # 创建线程池（用于执行阻塞的feedparser.parse）
-        executor = ThreadPoolExecutor(max_workers=self.max_concurrent)
-
-        try:
+        # 使用上下文管理器管理线程池（用于执行阻塞的feedparser.parse）
+        with ThreadPoolExecutor(max_workers=self.max_concurrent) as executor:
             # 创建信号量控制并发数
             semaphore = asyncio.Semaphore(self.max_concurrent)
 
@@ -267,9 +266,6 @@ class ConcurrentRSSFetcher:
                     source_classification["invalid_sources"].append(source_name)
                     self.perf_stats["failed_fetches"] += 1
 
-        finally:
-            executor.shutdown(wait=True)
-
         # 计算性能统计
         total_time = time.time() - overall_start_time
         self.perf_stats["total_sources"] = len(RSS_SOURCES)
@@ -306,18 +302,9 @@ class ConcurrentRSSFetcher:
         Returns:
             tuple: (news_list, stats_dict)
         """
-        # 获取或创建事件循环
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        # 运行异步任务
-        return loop.run_until_complete(self.fetch_all_rss_concurrent())
+        # 使用 asyncio.run() 替代过时的 get_event_loop() 模式
+        # 兼容 Python 3.7+，推荐用于 Python 3.10+
+        return asyncio.run(self.fetch_all_rss_concurrent())
 
 
 def compare_performance():

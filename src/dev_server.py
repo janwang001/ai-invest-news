@@ -17,12 +17,26 @@ WEBAPP_DIR = os.path.join(os.path.dirname(__file__), "..", "webapp")
 class Handler(http.server.SimpleHTTPRequestHandler):
     """自定义请求处理器"""
 
+    # 允许的 CORS 来源（仅限本地开发）
+    ALLOWED_ORIGINS = {
+        f'http://localhost:{PORT}',
+        f'http://127.0.0.1:{PORT}',
+        'http://localhost:8080',
+        'http://127.0.0.1:8080',
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEBAPP_DIR, **kwargs)
 
     def end_headers(self):
-        # 添加 CORS 头，方便开发调试
-        self.send_header('Access-Control-Allow-Origin', '*')
+        # 添加 CORS 头，仅允许本地来源（安全配置）
+        origin = self.headers.get('Origin', '')
+        if origin in self.ALLOWED_ORIGINS:
+            self.send_header('Access-Control-Allow-Origin', origin)
+        elif not origin:
+            # 同源请求没有 Origin 头，允许通过
+            self.send_header('Access-Control-Allow-Origin', f'http://localhost:{PORT}')
+        # 不在允许列表中的 Origin 不添加 CORS 头
         self.send_header('Cache-Control', 'no-cache')
         super().end_headers()
 
