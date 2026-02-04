@@ -1,0 +1,65 @@
+# Claude Code Ignore File
+# Exclude files/directories that don't need to be read by Claude
+
+# Virtual environments (large, not needed)
+venv/
+venv_new/
+.venv/
+env/
+
+# Git history
+.git/
+
+# Cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Model files and embeddings (large binary)
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.bin
+*.pt
+*.pth
+sentence_transformers_cache/
+
+# Data directories (runtime generated)
+raw_data/
+output/
+webapp/data/
+
+# Test artifacts
+htmlcov/
+.coverage*
+tests/performance_report_*.json
+
+# IDE and editor
+.vscode/
+.idea/
+.codebuddy/
+*.swp
+*.swo
+
+# Documentation build output
+docs/_build/
+
+# Logs
+*.log
+logs/
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Node modules (if any)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db

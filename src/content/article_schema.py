@@ -24,6 +24,7 @@ class ArticleEvent:
     sources: List[str]
     news_list: List[Dict] = field(default_factory=list)  # 新闻列表，包含标题、链接、重要性等信息
     event_id: Optional[str] = None
+    tier: str = "tier2"  # tier1 / tier2 / tier3，默认tier2
 
 
 @dataclass

@@ -11,10 +11,11 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Tuple, List
 
-from search import SearchPipeline
+from search.search_pipeline_v2 import SearchPipelineV2 as SearchPipeline
 from search.search_result_process import normalize_news
 from selector.news_selector import NewsSelectorPipeline
-from search.rss_config import MAX_NORMALIZED_ITEMS
+from selector.investment_scorer import calculate_investment_scorecard
+from search.rss_config import MAX_NORMALIZED_ITEMS, USE_CONCURRENT, MAX_CONCURRENT
 from selector.selector_config import TOP_K_SELECT
 from event.event_pipeline import EventPipeline
 from event.decision import EventDecisionPipeline
@@ -34,7 +35,7 @@ def generate_ai_news(hours: int = 24) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     生成 AI 投资新闻分析结果。
 
-    完整流程（11步）：
+    完整流程（12步）：
     1. 搜索最近新闻（使用SearchPipeline）
     2. 规范化新闻数据
     3. 原文抓取（ArticleFetcher）
@@ -42,6 +43,7 @@ def generate_ai_news(hours: int = 24) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     5. 轻量化特征抽取（LightFeaturesExtractor）
     6. 新闻选择（质量评分→排序→选择前k）
     7. 投资信息抽取（InvestmentExtractor，使用LLM）
+    7.5. 投资评分卡计算（InvestmentScorer，7维度评分）
     8. 事件分析（嵌入→聚类→摘要生成）
     9. 事件决策（重要性评估→信号分类→动作映射）
     10. 公众号文章生成（事件排序→分类→渲染）
@@ -67,9 +69,13 @@ def generate_ai_news(hours: int = 24) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         # 第一步：使用SearchPipeline搜索最近新闻
         # ============================================
         logger.info("第一步：使用SearchPipeline搜索最近新闻...")
-        pipeline = SearchPipeline(hours=hours)
+        pipeline = SearchPipeline(
+            hours=hours,
+            use_concurrent=USE_CONCURRENT,
+            max_concurrent=MAX_CONCURRENT
+        )
         raw_news, search_stats = pipeline.search_recent_ai_news()
-        logger.info(f"搜索完成，获取 {len(raw_news)} 条原始新闻")
+        logger.info(f"搜索完成，获取 {len(raw_news)} 条原始新闻（{'并发' if USE_CONCURRENT else '串行'}模式，并发数={MAX_CONCURRENT if USE_CONCURRENT else 1}）")
         stats["search_stats"] = search_stats
 
         # ============================================
@@ -127,6 +133,12 @@ def generate_ai_news(hours: int = 24) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         # ============================================
         logger.info("第七步：投资信息抽取（InvestmentExtractor，使用LLM）...")
         final_news = _extract_investment_info(final_news, stats)
+
+        # ============================================
+        # 第七点五步：投资评分卡计算（7维度评分）
+        # ============================================
+        logger.info("第七点五步：投资评分卡计算（7维度评分）...")
+        final_news = _calculate_investment_scorecards(final_news, stats)
 
         # ============================================
         # 第八步：事件分析（嵌入→聚类→摘要）
@@ -303,6 +315,46 @@ def _extract_investment_info(news_list: List[Dict[str, Any]], stats: Dict[str, A
     except Exception as e:
         logger.error(f"投资信息抽取失败: {e}", exc_info=True)
         stats["investment_extract_stats"] = {"error": str(e)}
+
+    return news_list
+
+
+def _calculate_investment_scorecards(news_list: List[Dict[str, Any]], stats: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    第七点五步：投资评分卡计算
+
+    Args:
+        news_list: 新闻列表
+        stats: 统计信息字典
+
+    Returns:
+        带有投资评分卡的新闻列表
+    """
+    try:
+        scorecard_stats = {"total": 0, "success": 0, "failed": 0}
+
+        for news in news_list:
+            scorecard_stats["total"] += 1
+
+            try:
+                # 计算投资评分卡
+                scorecard = calculate_investment_scorecard(news)
+                scorecard_stats["success"] += 1
+                news["investment_scorecard"] = scorecard.to_dict()
+            except Exception as e:
+                scorecard_stats["failed"] += 1
+                logger.warning(f"计算投资评分卡失败: {e}")
+                news["investment_scorecard"] = None
+
+        stats["scorecard_stats"] = scorecard_stats
+        logger.info(
+            f"投资评分卡计算完成: 总计 {scorecard_stats['total']} 条，"
+            f"成功 {scorecard_stats['success']} 条，"
+            f"失败 {scorecard_stats['failed']} 条"
+        )
+    except Exception as e:
+        logger.error(f"投资评分卡计算失败: {e}", exc_info=True)
+        stats["scorecard_stats"] = {"error": str(e)}
 
     return news_list
 

@@ -27,64 +27,127 @@ class ArticleBuilder:
     def build(self, events: List[Dict]) -> DailyArticle:
         """
         构建每日文章
-        
+
         Args:
             events: 事件列表，包含decision信息
-            
+
         Returns:
             DailyArticle: 构建完成的每日文章
         """
         try:
             logger.info("开始构建公众号文章")
-            
-            # 1. 过滤和排序事件
-            filtered_events = self._filter_and_sort_events(events)
-            
-            # 2. 转换为ArticleEvent对象
-            article_events = self._convert_to_article_events(filtered_events)
-            
-            # 3. 生成市场信号汇总
+
+            # 1. 过滤和排序事件（3层级）
+            tiered_events = self._filter_and_sort_events(events)
+
+            # 2. 合并所有层级的事件用于后续处理
+            all_events = (
+                tiered_events["tier1"] +
+                tiered_events["tier2"] +
+                tiered_events["tier3"]
+            )
+
+            # 3. 转换为ArticleEvent对象
+            article_events = self._convert_to_article_events(all_events)
+
+            # 为事件添加层级标记
+            tier1_count = len(tiered_events["tier1"])
+            tier2_count = len(tiered_events["tier2"])
+
+            for i, event in enumerate(article_events):
+                if i < tier1_count:
+                    event.tier = "tier1"
+                elif i < tier1_count + tier2_count:
+                    event.tier = "tier2"
+                else:
+                    event.tier = "tier3"
+
+            # 4. 生成市场信号汇总
             market_signals = self._generate_market_signals(article_events)
-            
-            # 4. 生成值得关注方向
+
+            # 5. 生成值得关注方向
             watch_directions = self._generate_watch_directions(article_events)
-            
-            # 5. 生成头条标题
+
+            # 6. 生成头条标题
             headline = self._generate_headline(article_events)
-            
-            # 6. 生成市场概览
+
+            # 7. 生成市场概览
             market_overview = self._generate_market_overview(
                 article_events, market_signals, watch_directions
             )
-            
-            # 7. 构建最终文章
+
+            # 8. 构建最终文章
             article = DailyArticle(
                 date=datetime.now().strftime("%Y-%m-%d"),
                 headline=headline,
                 events=article_events,
                 market_overview=market_overview
             )
-            
-            logger.info(f"文章构建完成，包含 {len(article_events)} 个事件")
+
+            logger.info(
+                f"文章构建完成，包含 {len(article_events)} 个事件 "
+                f"(Tier1: {tier1_count}, Tier2: {tier2_count}, "
+                f"Tier3: {len(tiered_events['tier3'])})"
+            )
             return article
-            
+
         except Exception as e:
             logger.error(f"文章构建失败: {e}")
             raise
     
-    def _filter_and_sort_events(self, events: List[Dict]) -> List[Dict]:
-        """过滤和排序事件"""
-        # 过滤：保留所有事件（包括Low重要性）以丰富内容
-        filtered = events.copy()
-        
-        # 排序：按重要性（High > Medium）和新闻数量排序
-        filtered.sort(key=lambda x: (
-            self._importance_score(x.get("decision", {}).get("importance", "Low")),
-            x.get("news_count", 0)
-        ), reverse=True)
-        
-        # 限制数量
-        return filtered[:self.max_events]
+    def _filter_and_sort_events(self, events: List[Dict]) -> Dict[str, List[Dict]]:
+        """
+        过滤和排序事件，分为3个层级
+
+        Returns:
+            Dict包含 tier1, tier2, tier3 的事件列表
+        """
+        tier1_events = []  # 高优先级（综合得分 >= 70）
+        tier2_events = []  # 中优先级（综合得分 50-69）
+        tier3_events = []  # 低优先级（综合得分 < 50）
+
+        for event in events:
+            # 计算事件的平均综合得分
+            avg_composite = self._calculate_avg_composite_score(event)
+
+            if avg_composite >= 70:
+                tier1_events.append(event)
+            elif avg_composite >= 50:
+                tier2_events.append(event)
+            else:
+                tier3_events.append(event)
+
+        # 在每个层级内按新闻数量排序
+        tier1_events.sort(key=lambda x: x.get("news_count", 0), reverse=True)
+        tier2_events.sort(key=lambda x: x.get("news_count", 0), reverse=True)
+        tier3_events.sort(key=lambda x: x.get("news_count", 0), reverse=True)
+
+        return {
+            "tier1": tier1_events[:3],   # 最多3个 Tier 1 事件
+            "tier2": tier2_events[:5],   # 最多5个 Tier 2 事件
+            "tier3": tier3_events[:3]    # 最多3个 Tier 3 事件
+        }
+
+    def _calculate_avg_composite_score(self, event: Dict) -> float:
+        """计算事件中所有新闻的平均综合得分"""
+        news_list = event.get("news_list", [])
+        if not news_list:
+            return 0.0
+
+        total_score = 0.0
+        count = 0
+
+        for news in news_list:
+            scorecard = news.get("investment_scorecard", {})
+            if scorecard and isinstance(scorecard, dict):
+                composite_score = scorecard.get("composite_score", 0.0)
+                total_score += composite_score
+                count += 1
+
+        if count == 0:
+            return 0.0
+
+        return total_score / count
     
     def _importance_score(self, importance: str) -> int:
         """重要性评分"""

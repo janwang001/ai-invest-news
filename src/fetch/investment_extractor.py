@@ -32,11 +32,46 @@ from .fetch_config import (
 
 
 @dataclass
+class InvestmentThesis:
+    """
+    投资论点结构
+
+    包含看涨/看跌理由、关键问题、时间周期、历史类比
+    """
+    bull_case: List[str] = field(default_factory=list)         # 看涨理由（3个）
+    bear_case: List[str] = field(default_factory=list)         # 看跌理由（3个）
+    key_question: str = ""                                      # 关键问题（决定投资结果）
+    time_horizon: str = ""                                      # 影响兑现时间
+    comparable_events: List[str] = field(default_factory=list) # 历史类似事件
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典格式"""
+        return {
+            "bull_case": self.bull_case,
+            "bear_case": self.bear_case,
+            "key_question": self.key_question,
+            "time_horizon": self.time_horizon,
+            "comparable_events": self.comparable_events,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "InvestmentThesis":
+        """从字典创建实例"""
+        return cls(
+            bull_case=data.get("bull_case", []),
+            bear_case=data.get("bear_case", []),
+            key_question=data.get("key_question", ""),
+            time_horizon=data.get("time_horizon", ""),
+            comparable_events=data.get("comparable_events", []),
+        )
+
+
+@dataclass
 class InvestmentInfo:
     """
     投资信息结构
 
-    包含 6 个维度的结构化投资信息 + AI 总结
+    包含 6 个维度的结构化投资信息 + AI 总结 + 投资论点
     """
     facts: List[str] = field(default_factory=list)              # 明确事实
     numbers: List[str] = field(default_factory=list)            # 数字/量化信息
@@ -45,6 +80,7 @@ class InvestmentInfo:
     management_claims: List[str] = field(default_factory=list)  # 管理层表态
     uncertainties: List[str] = field(default_factory=list)      # 不确定性/风险
     ai_summary: str = ""                                        # AI 内容总结
+    investment_thesis: Optional[InvestmentThesis] = None        # 投资论点
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式"""
@@ -56,11 +92,15 @@ class InvestmentInfo:
             "management_claims": self.management_claims,
             "uncertainties": self.uncertainties,
             "ai_summary": self.ai_summary,
+            "investment_thesis": self.investment_thesis.to_dict() if self.investment_thesis else None,
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "InvestmentInfo":
         """从字典创建实例"""
+        investment_thesis_data = data.get("investment_thesis")
+        investment_thesis = InvestmentThesis.from_dict(investment_thesis_data) if investment_thesis_data else None
+
         return cls(
             facts=data.get("facts", []),
             numbers=data.get("numbers", []),
@@ -69,6 +109,7 @@ class InvestmentInfo:
             management_claims=data.get("management_claims", []),
             uncertainties=data.get("uncertainties", []),
             ai_summary=data.get("ai_summary", ""),
+            investment_thesis=investment_thesis,
         )
 
     def is_empty(self) -> bool:
@@ -192,7 +233,7 @@ class InvestmentExtractor:
 {content}
 ====================
 
-请严格按照以下 6 个维度进行信息抽取，每个维度最多提取 {self.max_items} 条最重要的信息：
+请严格按照以下 8 个维度进行信息抽取，每个维度最多提取 {self.max_items} 条最重要的信息：
 
 1. **facts（明确事实）**
    - 已经发生的客观事实
@@ -232,6 +273,13 @@ class InvestmentExtractor:
    - 突出对投资决策最重要的信息
    - 包含关键数字和事实
 
+8. **investment_thesis（投资论点）** - 结构化投资分析
+   - bull_case: 3个最强的看涨理由（具体、可验证、包含数字支撑）
+   - bear_case: 3个最强的看跌理由（具体、可验证、包含风险量化）
+   - key_question: 决定投资结果的关键问题（一句话，聚焦核心不确定性）
+   - time_horizon: 影响兑现时间（"即时" | "1-3个月" | "6-12个月" | "长期"）
+   - comparable_events: 历史类似事件（例如："类似NVIDIA 2016年加密热潮"，最多2个）
+
 请严格返回以下 JSON 格式，不要添加任何其他内容：
 {{
     "facts": ["事实1", "事实2", ...],
@@ -240,7 +288,14 @@ class InvestmentExtractor:
     "industry_impact": ["行业影响1", "行业影响2", ...],
     "management_claims": ["表态1", "表态2", ...],
     "uncertainties": ["风险1", "风险2", ...],
-    "ai_summary": "文章核心内容的简洁总结..."
+    "ai_summary": "文章核心内容的简洁总结...",
+    "investment_thesis": {{
+        "bull_case": ["看涨理由1（具体）", "看涨理由2（具体）", "看涨理由3（具体）"],
+        "bear_case": ["看跌理由1（具体）", "看跌理由2（具体）", "看跌理由3（具体）"],
+        "key_question": "决定投资结果的关键问题？",
+        "time_horizon": "1-3个月",
+        "comparable_events": ["历史类似事件1", "历史类似事件2"]
+    }}
 }}
 
 注意事项：
@@ -363,6 +418,54 @@ class InvestmentExtractor:
             result.ai_summary = ai_summary.strip()
         else:
             result.ai_summary = ""
+
+        # 处理 investment_thesis 字段
+        thesis_data = data.get("investment_thesis", {})
+        if isinstance(thesis_data, dict):
+            try:
+                # 验证并清理 bull_case
+                bull_case = thesis_data.get("bull_case", [])
+                if isinstance(bull_case, list):
+                    bull_case = [str(item).strip() for item in bull_case if item][:3]
+                else:
+                    bull_case = []
+
+                # 验证并清理 bear_case
+                bear_case = thesis_data.get("bear_case", [])
+                if isinstance(bear_case, list):
+                    bear_case = [str(item).strip() for item in bear_case if item][:3]
+                else:
+                    bear_case = []
+
+                # 验证并清理 key_question
+                key_question = thesis_data.get("key_question", "")
+                if not isinstance(key_question, str):
+                    key_question = ""
+                key_question = key_question.strip()
+
+                # 验证并清理 time_horizon
+                time_horizon = thesis_data.get("time_horizon", "")
+                if not isinstance(time_horizon, str):
+                    time_horizon = ""
+                time_horizon = time_horizon.strip()
+
+                # 验证并清理 comparable_events
+                comparable_events = thesis_data.get("comparable_events", [])
+                if isinstance(comparable_events, list):
+                    comparable_events = [str(item).strip() for item in comparable_events if item][:2]
+                else:
+                    comparable_events = []
+
+                result.investment_thesis = InvestmentThesis(
+                    bull_case=bull_case,
+                    bear_case=bear_case,
+                    key_question=key_question,
+                    time_horizon=time_horizon,
+                    comparable_events=comparable_events,
+                )
+            except Exception as e:
+                self.logger.warning(f"处理 investment_thesis 失败: {e}")
+                result.investment_thesis = None
 
         return result
 

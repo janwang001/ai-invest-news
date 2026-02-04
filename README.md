@@ -1,21 +1,113 @@
 # AI Investment News Analysis System
 
-一个自动化的投资新闻聚合、筛选和AI驱动分析系统。使用Python实现，集成了RSS订阅、自然语言处理和大语言模型(LLM)的投资新闻智能分析平台。
+**Version 2.1.0** - Professional Investment Intelligence Platform
 
-## 📋 项目概述
+一个专业的投资新闻智能分析系统，集成了RSS订阅、自然语言处理和大语言模型(LLM)，提供投资级别的新闻聚合、筛选、分析和决策支持。
+
+## 🆕 v2.1 新功能: 7大数据源精准监控
+
+### 🎯 高敏感度数据源监控
+实时监控7大高敏感度投资信号源，精准捕捉投资机会和风险：
+
+| 数据源 | 监控内容 | 检查频率 |
+|--------|----------|----------|
+| **SEC EDGAR** | 8-K重大事件、Form D融资、S-1 IPO、13D/13G持股 | 5分钟 |
+| **监管机构** | FTC反垄断、DOJ调查、EU Commission | 15分钟 |
+| **大厂博客** | OpenAI、Google AI、Meta AI、Anthropic、NVIDIA、DeepMind | 30分钟 |
+| **股价异动** | NVDA、AMD、TSM、MSFT、GOOGL、AMZN、META等16只AI股票 | 5分钟 |
+| **CEO Twitter** 🆕 | @sama、@elonmusk、@satyanadella、@sundarpichai等8位 | 30分钟 |
+| **GitHub爆款** 🆕 | OpenAI、Meta、Google等顶级组织的AI相关项目 | 60分钟 |
+| **Hacker News** 🆕 | AI相关热门讨论（分数>50，评论>20） | 30分钟 |
+
+### 🚨 3级警报优先级系统
+| 优先级 | 触发条件 | 响应时间 |
+|--------|----------|----------|
+| **P0** | IPO注册、$100M+融资、收购、产品发布、股价>5%、刑事调查 | 立即推送 |
+| **P1** | 8-K其他事件、Form D、技术博客、股价3-5% | 1小时汇总 |
+| **P2** | 一般监控信息 | 每日汇总 |
+
+### 📢 多渠道通知
+- **控制台**: 实时显示警报
+- **文件记录**: JSON格式持久化存储
+- **Webhook**: 支持 Slack / 企业微信 / 钉钉
+
+### 快速使用
+```bash
+# 测试模式（所有数据源）
+python src/run_monitor.py --test
+
+# 生产模式
+python src/run_monitor.py
+
+# 仅SEC和监管监控
+python src/run_monitor.py --no-blog --no-stock --no-twitter --no-github --no-hn
+
+# 带Slack通知
+python src/run_monitor.py --webhook https://hooks.slack.com/xxx --webhook-platform slack
+
+# 自定义时间范围
+python src/run_monitor.py --twitter-hours 6 --github-days 3 --hn-hours 12
+
+# 查看所有选项
+python src/run_monitor.py --help
+```
+
+---
+
+## ✨ 核心特性（v1.1 新增）
+
+### 🎯 投资论点分析
+- **看涨/看跌理由**：每条核心新闻提供3个具体的看涨和看跌理由
+- **关键问题**：识别决定投资结果的核心不确定性
+- **时间周期**：明确影响兑现的时间范围（即时/1-3月/6-12月/长期）
+- **历史类比**：提供类似历史事件作为参考
+
+### 📊 7维度投资评分卡
+- **重要性**（0-10）：财务影响规模
+- **紧迫性**（0-10）：时间敏感度
+- **确信度**（0-10）：证据质量
+- **竞争影响**（0-10）：竞争格局变化
+- **风险**（0-10）：不确定性水平
+- **创新度**（0-10）：技术/产品创新
+- **执行力**（0-10）：可执行性
+- **综合得分**（0-100）+ 投资评级（Strong Buy Signal / Monitor / Risk Alert / Pass）
+
+### 🔥 智能优先级排序
+- **3层级事件结构**：
+  - Tier 1（高优先级）：综合得分 >= 70，最多3个事件，包含投资论点和风险收益分析
+  - Tier 2（中等优先级）：综合得分 50-69，最多5个事件，精简格式
+  - Tier 3（低优先级）：综合得分 < 50，最多3个事件，仅标题
+
+### 🚨 今日重点关注（Executive Alerts）
+- 自动识别 Top 3 行动项（按紧迫性 × 重要性排序）
+- 每个警报包含：
+  - 投资评级（⭐⭐⭐⭐⭐ or ⚠️⚠️⚠️）
+  - 建议行动（具体操作指引）
+  - 时间窗口（何时行动）
+  - 风险等级 + 确信度
+
+### ⚖️ 风险-收益评估
+- 上行潜力可视化（🟢 0-5 级）
+- 下行风险可视化（🔴 0-5 级）
+- 风险调整收益判断（有利/中性/不利）
+
+---
+
+## 📋 系统流程（12步）
 
 该系统通过以下工作流自动化投资新闻分析过程：
 
-1. **搜索阶段** - 从多个RSS源抓取最新新闻（支持24小时时间范围过滤）
+1. **搜索阶段** - 从86个RSS源抓取最新新闻（支持24小时时间范围过滤）
 2. **规范化处理** - 验证、清理和统一新闻数据格式
 3. **原文抓取** - 使用ArticleFetcher抓取网页原文
 4. **流程处理** - 去重、合并相似新闻
 5. **轻量化特征抽取** - 使用规则/正则提取高信号特征（不用LLM）
 6. **智能筛选** - 基于投资事件、关键词和轻量化特征进行评分和排序
-7. **投资信息抽取** - 使用LLM抽取6维度结构化投资信息
+7. **投资信息抽取** - 使用LLM抽取6维度结构化投资信息 + 投资论点 🆕
+7.5. **投资评分卡计算** - 7维度评分 + 综合得分 + 投资评级 🆕
 8. **事件分析** - 新闻聚类和事件检测
 9. **事件决策** - 重要性评估、信号分类和动作映射
-10. **公众号文章生成** - 生成结构化的投资新闻分析文章
+10. **公众号文章生成** - 生成3层级投资报告（Executive Alerts + 投资论点 + 风险收益）🆕
 11. **H5应用数据导出** - 导出JSON格式数据供移动端H5应用展示
 
 ## 🏗️ 项目结构
@@ -24,27 +116,50 @@
 ai-invest-news/
 ├── src/
 │   ├── __init__.py
-│   ├── main.py                         # 主程序入口（11步流程）
+│   ├── main.py                         # 主程序入口（12步流程）
+│   ├── run_monitor.py                  # 🆕 精准监控命令行工具
+│   ├── collectors/                     # 🆕 精准监控模块
+│   │   ├── __init__.py
+│   │   ├── sec_edgar_collector.py     # SEC EDGAR采集器
+│   │   ├── regulatory_collector.py    # 监管机构采集器
+│   │   ├── blog_collector.py          # 大厂博客采集器
+│   │   ├── stock_monitor.py           # 股价异动监控器
+│   │   ├── twitter_monitor.py         # 🆕 CEO Twitter监控器 (Nitter RSS)
+│   │   ├── github_monitor.py          # 🆕 GitHub爆款项目监控器
+│   │   ├── hackernews_monitor.py      # 🆕 Hacker News监控器
+│   │   ├── alert_system.py            # P0/P1/P2警报系统
+│   │   ├── notifier.py                # 通知推送系统
+│   │   └── precision_monitor.py       # 统一调度器
 │   ├── demo/                           # Demo模块
 │   │   ├── __init__.py
-│   │   ├── demo1.py
-│   │   └── demo2.py
+│   │   ├── demo.py
+│   │   └── demo1.py
 │   ├── search/                         # 搜索模块 - RSS抓取和结果预处理
 │   │   ├── __init__.py
 │   │   ├── rss_config.py              # RSS源配置和参数设置
 │   │   ├── search_pipeline.py         # 搜索主流程
+│   │   ├── search_pipeline_v2.py      # 并发搜索流程
+│   │   ├── concurrent_rss_fetcher.py  # 并发RSS抓取器
 │   │   └── search_result_process.py   # 搜索结果处理(去重、合并)
 │   ├── selector/                       # 筛选模块 - 新闻选择和评分
 │   │   ├── __init__.py
 │   │   ├── selector_config.py         # 筛选配置
-│   │   └── news_selector.py           # 新闻评分和选择逻辑（支持轻量化特征）
+│   │   ├── news_selector.py           # 新闻评分和选择逻辑（支持轻量化特征）
+│   │   └── investment_scorer.py       # 🆕 投资评分卡（7维度评分）
 │   ├── event/                         # 事件分析模块 - 新闻事件检测和聚类
 │   │   ├── __init__.py
 │   │   ├── event_config.py           # 事件分析配置
 │   │   ├── embedding.py              # 文本嵌入功能
 │   │   ├── clustering.py             # 新闻聚类功能
 │   │   ├── event_summary.py          # 事件摘要生成
-│   │   └── event_pipeline.py         # 事件分析流程管理
+│   │   ├── event_pipeline.py         # 事件分析流程管理
+│   │   └── decision/                 # 事件决策模块
+│   │       ├── __init__.py
+│   │       ├── decision_config.py   # 决策配置
+│   │       ├── importance_evaluator.py # 重要性评估
+│   │       ├── signal_classifier.py   # 信号分类
+│   │       ├── action_mapper.py       # 动作映射
+│   │       └── decision_pipeline.py  # 决策流程
 │   ├── content/                        # 公众号文章生成模块
 │   │   ├── __init__.py
 │   │   ├── article_schema.py          # 文章数据结构定义
@@ -64,7 +179,10 @@ ai-invest-news/
 │   ├── conftest.py                     # pytest配置
 │   ├── test_event_integration.py       # Event模块集成测试
 │   ├── test_exporter.py                # H5导出器测试脚本
-│   └── test_full_flow.py               # 全流程测试脚本（Mock 200条数据）
+│   ├── test_full_flow.py               # 全流程测试脚本（Mock 200条数据）
+│   ├── test_phase1_integration.py      # Phase 1集成测试
+│   ├── test_week1_integration.py       # 🆕 Week 1精准监控测试
+│   └── test_week2_integration.py       # 🆕 Week 2精准监控测试
 ├── webapp/                             # H5移动端应用
 │   ├── index.html                      # 主页（文章列表）
 │   ├── detail.html                     # 详情页（事件列表）
@@ -97,7 +215,7 @@ ai-invest-news/
 
 1. **克隆项目**
 ```bash
-git clone https://github.com/example/ai-invest-news.git
+git clone https://github.com/janwang001/ai-invest-news.git
 cd ai-invest-news
 ```
 
@@ -152,19 +270,28 @@ python -m src.selector.news_selector
 
 ### 1. 搜索模块 (`src/search/`)
 
-**功能**: 从多个RSS源抓取新闻数据
+**功能**: 从多个RSS源抓取新闻数据，支持串行和并发两种模式
 
 **主要配置** (`rss_config.py`):
 - `RSS_SOURCES`: RSS源列表（50+个AI/科技/投资相关源）
 - `SEARCH_HOURS`: 搜索时间范围，默认24小时
 - `MAX_ITEMS_PER_SOURCE`: 每个源最大条数，默认20
 - `MAX_NORMALIZED_ITEMS`: 规范化输出最大条数，默认30
+- `USE_CONCURRENT`: 是否启用并发模式，默认True
+- `MAX_CONCURRENT`: 并发数，默认10（推荐配置，实现8.38倍加速）
 
 **关键函数**:
-- `search_recent_ai_news()`: 从RSS源搜索新闻
+- `search_recent_ai_news()`: 从RSS源搜索新闻（支持并发模式）
 - `normalize_news()`: 规范化新闻格式
 - `deduplicate_news()`: 去重处理
 - `merge_similar_news()`: 合并相似新闻
+
+**并发抓取优化** (v0.3.0新增):
+- **性能提升**: 并发模式相比串行模式实现88.1%性能提升
+- **加速比**: 8.38倍（并发数=10）
+- **资源消耗**: CPU仅28.8%，内存增量0.2%，系统资源健康
+- **配置灵活**: 支持串行/并发模式切换，并发数可配置
+- **向后兼容**: 完全兼容原有代码，一行配置即可切换
 
 ### 2. 筛选模块 (`src/selector/`)
 
@@ -362,6 +489,82 @@ decision_stats = {
     "errors": ["事件ID: evt_20260120_02 - 缺少必要字段"]
 }
 ```
+
+### 6. 抓取与特征抽取模块 (`src/fetch/`)
+
+**功能**: 文章原文抓取、轻量化特征抽取和投资信息抽取
+
+**模块组成**:
+- **article_fetcher.py**: 原文抓取器（HTML → 正文）
+- **light_features_extractor.py**: 轻量化特征抽取器（不用LLM）
+- **investment_extractor.py**: 投资信息抽取器（使用LLM）
+- **fetch_config.py**: 统一配置管理
+
+**集成时机**:
+- **原文抓取（第三步）**: 在规范化之后立即抓取，供后续所有步骤使用
+- **投资信息抽取（第七步）**: 在新闻选择之后，对高价值新闻进行LLM抽取
+
+**article_fetcher 功能**:
+- **原文抓取**: 对筛选出的高价值新闻URL进行原文抓取
+- **正文提取**: 使用readability-lxml（Firefox阅读模式算法）提取干净正文
+- **噪声清洗**: 自动过滤cookie提示、广告、订阅弹窗等噪声内容
+- **长度控制**: 限制输出长度（默认6000字符），优化token消耗
+- **本地存储**: 按日期分目录存储到`raw_data/YYYYMMDD/`
+- **统计信息**: 提供详细的抓取统计（原始大小、清洗后长度、耗时等）
+
+**light_features_extractor 功能**:
+- **设计目的**: 给selector提供更多判断维度，而不是生成内容
+- **技术特点**: 不使用LLM，只用规则/正则/BeautifulSoup
+- **执行速度**: 快速、成本低，提取高信号特征
+
+**输出结构** (`LightArticleFeatures`):
+```python
+LightArticleFeatures = {
+    "content_length": int,        # 正文长度
+    "title_length": int,          # 标题长度
+    "has_numbers": bool,          # 是否有金额/百分比
+    "has_quote": bool,            # 是否有高管/官方引用
+    "number_count": int,          # 数字出现次数
+    "mentioned_companies": [str],  # 提及的公司列表
+    "company_count": int,        # 公司数量
+    "contains_terms": [str],     # 包含的投资信号词
+    "signal_term_count": int,    # 信号词数量
+    "paragraph_count": int,      # 段落数量
+    "avg_sentence_length": float, # 平均句子长度
+}
+```
+
+**investment_extractor 功能**:
+- **6维度投资信息抽取**:
+  - `facts`: 明确事实（已发生的客观事件）
+  - `numbers`: 数字/量化信息（金额、比例、增长率）
+  - `business`: 商业化信息（定价、客户、营收）
+  - `industry_impact`: 行业影响（竞争格局、上下游关系）
+  - `management_claims`: 管理层表态（高管说法、官方声明）
+  - `uncertainties`: 不确定性/风险（执行、技术、政策风险）
+- **专业Prompt设计**: 以20年+二级市场研究经验的投资分析师视角
+- **智能抽取**: 调用千问Plus模型进行结构化信息提取
+- **结果存储**: JSON格式存储，文件名带`_investment.json`后缀
+
+**投资信息抽取输出结构** (`InvestmentInfo`):
+```python
+InvestmentInfo = {
+    "facts": [str],                # 明确事实
+    "numbers": [str],              # 数字/量化信息
+    "business": [str],             # 商业化信息
+    "industry_impact": [str],      # 行业影响
+    "management_claims": [str],    # 管理层表态
+    "uncertainties": [str],        # 不确定性/风险
+    "ai_summary": str,             # AI 内容总结（2-3句话概括核心内容）
+}
+```
+
+**技术优势**:
+- 基于Firefox阅读模式的成熟算法，提取准确率高
+- 失败可跳过机制，不影响主流程运行
+- 详细的错误处理和重试机制
+- 支持批量抓取和单篇抓取两种模式
+- 投资信息结构化输出，便于后续策略使用
 
 ## 📈 数据流程
 
@@ -938,13 +1141,6 @@ python tests/test_exporter.py
 python tests/test_event_integration.py
 ```
 
-## 📝 日志输出
-
-系统使用Python标准logging库，输出包括：
-- 时间戳
-- 日志级别(DEBUG/INFO/WARNING/ERROR)
-- 详细的处理信息
-
 ## 🔐 环境变量
 
 | 变量名 | 说明 | 示例 |
@@ -961,6 +1157,8 @@ python tests/test_event_integration.py
 - **readability-lxml** - 文章正文提取（Firefox阅读模式算法）
 - **beautifulsoup4** - HTML解析和清洗
 - **sentence-transformers** - 文本嵌入和相似度计算
+- **aiohttp** - 异步HTTP客户端（并发RSS抓取）
+- **yfinance** - 🆕 股价数据获取（可选，用于股价监控）
 
 ## 🐛 故障排除
 
@@ -988,194 +1186,97 @@ MIT License - 详见 LICENSE 文件
 
 ## 📧 联系方式
 
-- Email: ai@example.com
-- GitHub: https://github.com/example/ai-invest-news
+- GitHub: https://github.com/janwang001/ai-invest-news
+- Email: janwang001@outlook.com
 
 ## 🔄 更新日志
 
+### v2.0.0 (2026-02-04) - 精准监控系统 🎯
+**Week 1: SEC + 监管监控**
+- **SEC EDGAR采集器**: 监控8-K、Form D、S-1、13D/13G等关键文件
+- **监管机构采集器**: FTC、DOJ、EU Commission新闻监控
+- **3级警报系统**: P0(立即)/P1(1小时)/P2(每日)优先级分类
+- **投资信号判断**: 自动识别Positive/Negative/Neutral信号
+
+**Week 2: 博客 + 股价 + 通知**
+- **大厂博客采集器**: OpenAI、Google AI、Meta AI、Anthropic、NVIDIA、DeepMind
+- **股价异动监控**: 16只AI相关股票，5%涨跌触发P0
+- **通知推送系统**: 支持控制台、文件、Webhook(Slack/企业微信/钉钉)
+- **命令行工具**: `run_monitor.py`统一入口，支持丰富参数配置
+
+### v1.1.0 (2026-02-04) - Phase 1: Investment Intelligence Upgrade 🚀
+- **投资论点分析**: 看涨/看跌理由、关键问题、时间周期、历史类比
+- **7维度投资评分卡**: 重要性、紧迫性、确信度、竞争影响、风险、创新度、执行力
+- **3层级事件结构**: Tier 1（详细）/ Tier 2（精简）/ Tier 3（标题）
+- **今日重点关注**: Top 3 Executive Alerts with action recommendations
+- **风险-收益评估**: 可视化上行潜力和下行风险
+- **报告质量提升**: 从"描述性"到"可行动"的投资洞察
+- **成本增加**: +60% ($0.50 → $0.80/report)
+- **时间增加**: +10% (10 → 11 minutes)
+
+### v0.3.0 (2026-01-23) - RSS并发抓取优化
+- **新增并发RSS抓取功能**: 实现基于asyncio的高性能并发抓取
+- **性能大幅提升**: 并发模式（并发数=10）实现88.1%性能提升，加速比达到8.38倍
+- **资源消耗健康**: CPU峰值仅28.8%，内存增量仅0.2%
+- **技术实现**: 使用asyncio + aiohttp实现异步并发，信号量控制并发数
+- **向后兼容**: 支持串行/并发模式切换，一行配置即可切换
+
 ### v0.2.0 (2026-01-20)
-- **新增轻量化特征抽取模块**: `light_features_extractor.py`
-  - 不使用LLM，只用规则/正则提取高信号特征
-  - 支持内容长度、数字检测、引用检测、公司识别、投资信号词提取
-  - 为selector提供更多判断维度
-- **流程重构为10步**:
-  1. 搜索阶段 - RSS抓取
-  2. 规范化 - 数据清理
-  3. 原文抓取 - ArticleFetcher（提前到第三步）
-  4. 流程处理 - 去重/合并
-  5. 轻量化特征抽取 - 不用LLM（新增）
-  6. 新闻选择 - 综合评分（含轻量化特征）
-  7. 投资信息抽取 - 使用LLM（仅对选中新闻）
-  8. 事件分析 - 嵌入/聚类/摘要
-  9. 事件决策 - 重要性/信号/动作
-  10. 公众号文章生成 - Markdown渲染
-- **NewsSelectorPipeline增强**:
-  - 新增`_score_light_features()`方法
-  - 支持基于轻量化特征的综合评分
-  - 新增`LIGHT_FEATURE_WEIGHTS`配置
-- **性能优化**:
-  - 原文抓取前移，供后续多个步骤复用
-  - LLM调用后移到选择之后，减少API调用次数
-  - 轻量化抽取成本接近为零
+- **新增轻量化特征抽取模块**: 不使用LLM，只用规则/正则提取高信号特征
+- **流程重构为10步**: 优化处理流程，减少LLM调用次数
+- **NewsSelectorPipeline增强**: 支持基于轻量化特征的综合评分
 
 ### v0.1.9 (2026-01-20)
-- **移除generation模块**: 将AI摘要生成功能迁移到fetch模块的investment_extractor中
-- **主流程优化**:
-  - 移除独立的AI摘要生成步骤
-  - fetch模块集成到新闻选择之后，事件分析之前
-  - 投资信息抽取直接生成ai_summary字段
-- **流程简化**:
-  - 8步流程：搜索→规范化→流程处理→新闻选择→原文抓取与投资信息抽取→事件分析→事件决策→公众号文章生成
-  - fetch模块现在是主流程的核心组件，负责原文抓取和投资信息抽取
-- **代码整洁**: 删除`src/generation/`目录，减少代码冗余
+- **移除generation模块**: 将AI摘要生成功能迁移到fetch模块
+- **主流程优化**: 简化流程结构，提高代码维护性
 
 ### v0.1.8 (2026-01-20)
-- **investment_extractor.py 已实现**: 投资信息抽取模块完整实现
-- **6维度投资信息抽取**:
-  - **facts（明确事实）**: 已发生的客观事实、可验证的事件
-  - **numbers（数字/量化信息）**: 金额、比例、增长率、估值、时间节点
-  - **business（商业化信息）**: 定价策略、客户情况、订单、营收
-  - **industry_impact（行业影响）**: 竞争格局、上下游关系、市场份额
-  - **management_claims（管理层表态）**: 高管说法、官方声明、指引
-  - **uncertainties（不确定性/风险）**: 执行/技术/政策/市场/竞争风险
-- **专业投资分析师视角Prompt设计**: 20年+二级市场研究经验的专业视角
-- **技术特性**:
-  - 调用千问Plus模型进行智能抽取
-  - 本地模式支持（无API密钥时）
-  - 结果自动验证和截断
-  - 按日期分目录存储（_investment.json后缀）
-  - 详细的抽取统计信息
-- **配置项**: EXTRACTOR_MODEL_NAME、MAX_ITEMS_PER_DIMENSION等
+- **investment_extractor.py完整实现**: 6维度投资信息抽取
+- **专业投资分析师视角Prompt设计**: 20年+二级市场研究经验
 
 ### v0.1.7 (2026-01-20)
-- **新增fetch模块**: 文章原文抓取功能，支持从URL获取干净的文章正文
-- **模块结构**:
-  - **fetch_config.py**: 统一配置管理，包含超时、长度限制、噪声关键词等
-  - **article_fetcher.py**: 基于readability-lxml的文章抓取器
-  - **investment_extractor.py**: 投资信息抽取（已实现）
+- **新增fetch模块**: 文章原文抓取功能
 - **技术选型**: readability-lxml + BeautifulSoup4 + requests
-- **核心特性**:
-  - 使用Firefox阅读模式算法提取正文
-  - 自动清洗噪声内容（cookie提示、广告等）
-  - 控制输出长度（默认6000字符），优化token消耗
-- 本地存储按日期分目录（raw_data/YYYYMMDD/）
-  - 返回详细统计信息（原始大小、清洗后长度、抓取耗时等）
-- **设计理念**: 稳定、干净、控制长度、失败可跳过
 
 ### v0.1.6 (2026-01-20)
-- **重要文章列表功能**: 在关键信息拆解部分新增重要性排名前5的文章标题和超链接
-- **排序规则优化**: 
-  - 基于新闻来源权威性评分（Financial Times、Bloomberg等权威来源得分更高）
-  - 基于发布时间新鲜度（24小时内发布的新闻额外加分）
-  - 最多展示5篇重要文章，包含标题、链接和来源
-- **本地模式支持**: 在没有API密钥时提供本地模拟响应，确保系统稳定运行
-- **模块增强**:
-  - **ArticleSchema**: 新增news_list字段存储新闻列表信息
-  - **ArticleBuilder**: 传递news_list数据到事件结构
-  - **MarkdownRenderer**: 实现重要文章排序和渲染逻辑
-- **功能特性**:
-  - 权威来源优先：Financial Times、Bloomberg等得10分，TechCrunch等得8分
-  - 新鲜度加分：24小时内+2分，48小时内+1分
-  - 最多展示5篇重要文章，提升信息筛选效率
+- **重要文章列表功能**: 在关键信息拆解部分新增重要性排名前5的文章
+- **排序规则优化**: 基于权威性和新鲜度评分
 
 ### v0.1.5 (2026-01-20)
-- **decision模块主流程集成**: 将事件决策层成功集成到main.py主流程中
-- **集成位置**: 在事件分析之后，AI摘要生成之前执行决策流程
-- **主流程增强**:
-  - **第六步**: 事件决策流程（重要性评估→信号分类→动作映射）
-  - **异常处理**: 决策失败不影响后续流程，继续使用原始事件
-  - **统计信息**: 完整的决策成功率、分布统计和错误信息输出
-  - **日志记录**: 每个决策步骤都有清晰的日志输出
-- **决策统计输出**:
-  - 重要性分布（High/Medium/Low）
-  - 信号分布（Positive/Neutral/Risk）
-  - 动作分布（Watch/Hold/Avoid）
-  - 决策成功率和错误信息统计
-- **模块结构**: 包含importance_evaluator、signal_classifier、action_mapper和decision_pipeline
-- **决策逻辑**:
-  - 重要性评估：基于新闻数量、来源多样性和投资分数判断重要性级别
-  - 信号分类：分析正面和风险信号关键词，判断市场信号方向
-  - 动作映射：结合重要性和信号生成Watch/Hold/Avoid投资动作
-- **可解释性**: 规则驱动的决策系统，避免LLM黑盒决策
-- **配置驱动**: 支持灵活调整重要性阈值和信号关键词
+- **decision模块主流程集成**: 将事件决策层集成到main.py主流程
+- **决策统计输出**: 完整的决策成功率、分布统计和错误信息
 
 ### v0.1.4 (2026-01-20)
 - **聚类算法优化**: 实现智能聚类策略，根据数据规模自适应选择算法
-- **事件有效性判断**: 添加公司数量、信号类型、投资分数等多维度验证
-- **结构化嵌入提示**: 优化embedding输入格式，提升事件语义理解准确性
-- **性能优化**: 嵌入缓存机制，节省50%+成本，支持批量处理优化
-- **功能特性**:
-  - 小规模数据（≤10条）：使用贪心余弦聚类，更稳定可靠
-  - 大规模数据（>10条）：使用HDBSCAN算法，适合复杂场景
-  - 事件有效性标准：公司≥1、信号≥1、投资分数≥0.3
-  - 结构化提示：标题、内容、信号、公司的结构化格式
+- **事件有效性判断**: 添加多维度验证确保事件质量
 
 ### v0.1.3 (2026-01-20)
 - **新增event模块**: 添加事件分析功能，支持新闻聚类和事件检测
-- **模块结构**: 包含embedding、clustering、event_summary和event_pipeline
-- **功能特性**: 
-  - 文本嵌入：使用SentenceTransformer进行向量化
-  - 新闻聚类：基于HDBSCAN算法的相似度聚类
-  - 事件摘要：自动生成事件关键词和摘要
-  - 流程统计：详细的处理统计信息输出
 
 ### v0.1.2 (2026-01-20)
 - **文档完善**: 详细定义每一步的news结构，清晰展示输入输出格式
-- **数据流程优化**: 添加完整的结构定义，包括字段类型和示例
-- **可读性提升**: 明确每个处理阶段的输入输出数据结构
 
 ### v0.1.1 (2026-01-20)
 - **代码重构**: 将AI生成摘要功能内聚到generation模块
-- **功能整合**: 将提示词构建和API密钥管理整合到news_summary_generation.py
-- **结构优化**: 删除summary_prompt_builder.py文件，简化模块结构
-- **维护性提升**: 统一的AI生成入口函数generate_ai_summary()
 
 ### v0.1.0 (2026-01-20)
-- 初始版本发布
-- 完整的搜索→规范化→处理→筛选→AI分析流程
-- 支持50+个RSS源
-- 集成Qwen LLM进行新闻分析
+- **初始版本发布**: 完整的搜索→规范化→处理→筛选→AI分析流程
+- **支持50+个RSS源**: AI/科技/投资相关新闻源
+- **集成Qwen LLM**: 进行深度投资新闻分析
 
 ---
 
-## 🎯 项目特色
+**最后更新**: 2026-02-04 (v2.0.0)
 
-### 智能投资分析
-- **多源聚合**: 支持50+个AI/科技/投资相关RSS源
-- **事件检测**: 基于语义相似度的新闻聚类和事件识别
-- **AI驱动**: 集成Qwen大语言模型进行深度投资分析
-- **结构化输出**: 生成专业的投资新闻分析报告
-- **重要文章筛选**: 基于权威性和新鲜度自动筛选重要性排名前5的文章
+## 📚 更多文档
 
-### 技术创新
-- **智能聚类策略**: 根据数据规模自适应选择聚类算法
-- **事件有效性判断**: 多维度验证确保事件质量
-- **结构化嵌入提示**: 优化语义理解准确性
-- **嵌入缓存机制**: 显著降低API调用成本
-
-### 工程优势
-- **模块化设计**: 清晰的模块边界和职责分离
-- **配置驱动**: 灵活的配置参数支持定制化需求
-- **详细统计**: 完整的流程监控和性能分析
-- **易于扩展**: 支持新功能模块的快速集成
-
-## 💡 应用场景
-
-- **投资研究**: 自动化跟踪AI/科技领域投资动态
-- **市场分析**: 识别行业趋势和关键事件
-- **风险监控**: 及时发现潜在的投资机会和风险
-- **信息聚合**: 从多源信息中提取高价值内容
-
-## 🔮 未来规划
-
-- **多语言支持**: 扩展至英文和其他语言新闻源
-- **实时流处理**: 支持实时新闻流分析和预警
-- **情感分析**: 集成情感分析增强投资判断
-- **可视化界面**: 开发Web界面展示分析结果
-- **API服务**: 提供RESTful API接口服务
+- **[Phase 1 Implementation Details](docs/PHASE1_IMPLEMENTATION.md)** - 完整实现文档
+- **[Quick Reference Guide](docs/PHASE1_QUICK_REFERENCE.md)** - 快速参考指南
+- **[Changelog](CHANGELOG.md)** - 版本更新历史
+- **[Example Report](/tmp/test_phase1_report.md)** - 示例报告（测试生成）
 
 ---
-
-**最后更新**: 2026-01-20 (v0.2.0)
 
 *一个专业的AI驱动投资新闻分析平台，帮助投资者从海量信息中提取高价值洞察*
+
+**Professional Investment Intelligence Platform - Powered by AI**

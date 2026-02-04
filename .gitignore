@@ -125,6 +125,7 @@ dmypy.json
 # IDE
 .vscode/
 .idea/
+.codebuddy/
 *.swp
 *.swo
 *~
@@ -135,12 +136,43 @@ dmypy.json
 *.bak
 temp/
 tmp/
+logs/
 
-# Data directories
-raw_data/
-output/
+# Data directories - content ignored via local .gitignore
+# (directories are tracked, files inside are ignored)
 webapp/data/
+
+# Additional virtual environments
+venv_new/
+.venv*/
+
+# Large model cache
+.cache/
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.bin
+*.pt
+*.pth
+sentence_transformers_cache/
+
+# Test artifacts
+tests/*.json
+tests/*.log
+tests/performance_report_*.json
+htmlcov/
+.coverage*
 
 # Environment variables
 .env.local
 .env.*.local
+
+# Claude Code specific
+.claude-internal/
+
+# Misc large files
+*.zip
+*.tar.gz
+*.rar
+*.7z

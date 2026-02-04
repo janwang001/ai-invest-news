@@ -91,3 +91,7 @@ RSS_SOURCES = [
 SEARCH_HOURS = 24  # 默认搜索时间范围（小时）
 MAX_ITEMS_PER_SOURCE = 20  # 每个 RSS 源最大条数
 MAX_NORMALIZED_ITEMS = 500  # 规范化输出的最大条数
+
+# 并发抓取配置
+USE_CONCURRENT = True  # 是否启用并发模式（True=并发，False=串行）
+MAX_CONCURRENT = 10  # 并发数（推荐：10，最佳性能和资源平衡）
